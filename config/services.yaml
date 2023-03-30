@@ -1,0 +1,110 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: "../src/"
+        exclude:
+            - "../src/DependencyInjection/"
+            - "../src/Entity/"
+            - "../src/Kernel.php"
+
+    app.transactional_service:
+        class: App\Services\Versioning\TransactionalService
+
+    App\EventListener\BeforeRequestListener:
+        arguments:
+            $em: "@doctrine.orm.entity_manager"
+        tags:
+            - {
+                  name: kernel.event_listener,
+                  event: kernel.request,
+                  priority: 250,
+              }
+            - {
+                  name: kernel.event_listener,
+                  event: console.command,
+                  priority: 250,
+              }
+
+    App\EventListener\SetTransactionIdentifierListener:
+        arguments:
+            $transactionalService: "@app.transactional_service"
+        tags:
+            - {
+                  name: kernel.event_listener,
+                  event: kernel.controller,
+                  priority: 245,
+              }
+            - {
+                  name: kernel.event_listener,
+                  event: kernel.response,
+                  priority: 50,
+              }
+            - {
+                  name: kernel.event_listener,
+                  event: kernel.exception,
+                  priority: 50,
+              }
+            # - { name: kernel.event_listener, event: console.command, priority: 245 }
+            # - { name: kernel.event_listener, event: console.terminate, priority: 50 }
+            # - { name: kernel.event_listener, event: console.error, priority: 50 }
+
+    App\EventListener\StartDoctrineTransactionListener:
+        arguments:
+            $em: "@doctrine.orm.entity_manager"
+        tags:
+            - {
+                  name: kernel.event_listener,
+                  event: kernel.request,
+                  priority: 240,
+              }
+            - {
+                  name: kernel.event_listener,
+                  event: kernel.response,
+                  priority: 60,
+              }
+            - {
+                  name: kernel.event_listener,
+                  event: kernel.exception,
+                  priority: 60,
+              }
+            # - { name: kernel.event_listener, event: console.command, priority: 240 }
+            # - { name: kernel.event_listener, event: console.terminate, priority: 60 }
+
+    App\Doctrine\ORM\EventListener\VersionedEntityListener:
+        arguments:
+            $transactionalService: "@app.transactional_service"
+        tags:
+            - { name: doctrine.event_listener, event: prePersist, priority: 10 }
+            - {
+                  name: doctrine.event_listener,
+                  event: postPersist,
+                  priority: 10,
+              }
+            - { name: doctrine.event_listener, event: preUpdate, priority: 10 }
+
+    App\Doctrine\ORM\Filter\VersionedEntityValidFilter:
+        calls:
+            - method: setLogger
+              arguments: ["@logger"]
+
+    App\Doctrine\ORM\Filter\VersionedEntityVersionFilter:
+        calls:
+            - method: setLogger
+              arguments: ["@logger"]
+
+    App\Request\ParamConverter\JsonParamConverter:
+        tags:
+            - { name: request.param_converter, priority: 0 }

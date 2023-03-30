@@ -1,0 +1,71 @@
+doctrine:
+    dbal:
+        url: "%env(resolve:DATABASE_URL)%"
+
+        # IMPORTANT: You MUST configure your server version,
+        # either here or in the DATABASE_URL env var (see .env file)
+        #server_version: '14'
+    orm:
+        auto_generate_proxy_classes: true
+        naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+        auto_mapping: true
+
+        filters:
+            versioned_entity_valid: App\Doctrine\ORM\Filter\VersionedEntityValidFilter
+            versioned_entity_version: App\Doctrine\ORM\Filter\VersionedEntityVersionFilter
+
+        mappings:
+            App:
+                is_bundle: false
+                dir: "%kernel.project_dir%/src/Entity"
+                prefix: 'App\Entity'
+                alias: App
+
+        dql:
+            datetime_functions:
+                maxdate: App\DQL\MaxdateFunction
+                second: DoctrineExtensions\Query\Postgresql\Second
+                minute: DoctrineExtensions\Query\Postgresql\Minute
+                hour: DoctrineExtensions\Query\Postgresql\Hour
+                day: DoctrineExtensions\Query\Postgresql\Day
+                month: DoctrineExtensions\Query\Postgresql\Month
+                year: DoctrineExtensions\Query\Postgresql\Year
+                date_format: DoctrineExtensions\Query\Postgresql\DateFormat
+                at_time_zone: DoctrineExtensions\Query\Postgresql\AtTimeZoneFunction
+                date_part: DoctrineExtensions\Query\Postgresql\DatePart
+                extract: DoctrineExtensions\Query\Postgresql\ExtractFunction
+                date_trunc: DoctrineExtensions\Query\Postgresql\DateTrunc
+                date: DoctrineExtensions\Query\Postgresql\Date
+
+            string_functions:
+                str_to_date: DoctrineExtensions\Query\Postgresql\StrToDate
+                count_filter: DoctrineExtensions\Query\Postgresql\CountFilterFunction
+                string_agg: DoctrineExtensions\Query\Postgresql\StringAgg
+                greatest: DoctrineExtensions\Query\Postgresql\Greatest
+                least: DoctrineExtensions\Query\Postgresql\Least
+                regexp_replace: DoctrineExtensions\Query\Postgresql\RegexpReplace
+
+when@test:
+    doctrine:
+        dbal:
+            # "TEST_TOKEN" is typically set by ParaTest
+            dbname_suffix: "_test%env(default::TEST_TOKEN)%"
+
+when@prod:
+    doctrine:
+        orm:
+            auto_generate_proxy_classes: false
+            query_cache_driver:
+                type: pool
+                pool: doctrine.system_cache_pool
+            result_cache_driver:
+                type: pool
+                pool: doctrine.result_cache_pool
+
+    framework:
+        cache:
+            pools:
+                doctrine.result_cache_pool:
+                    adapter: cache.app
+                doctrine.system_cache_pool:
+                    adapter: cache.system
